@@ -5,8 +5,6 @@ from rest_framework_simplejwt.views import (
 )
 from django.urls import path
 from rest_framework_simplejwt.serializers import Dict,Any,api_settings,update_last_login,TokenObtainSerializer
-from myconf.conf import get_model
-from myconf import conf
 
 class CustomTokenObtainPairSerializer(TokenObtainSerializer):
     token_class = RefreshToken

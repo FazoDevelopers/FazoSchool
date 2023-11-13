@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from sympy import im, per
 from myconf.conf import get_model,get_type_name_field
 from myconf import conf
 from rest_framework.viewsets import ModelViewSet
@@ -12,8 +13,11 @@ from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.views import APIView
-from django.db.models import Count
 from django.http import FileResponse
+from conf import permissions
+from rest_framework.decorators import authentication_classes
+from rest_framework.authentication import SessionAuthentication
+
 
 # Create your views here.
 def global_update(self, request, *args, **kwargs):
@@ -75,6 +79,7 @@ def global_update(self, request, *args, **kwargs):
 class UserView(ModelViewSet):
     queryset=get_user_model().objects.all()
     serializer_class=serializers.UserSerializer
+    permission_classes=[permissions.TasischiPermission]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -146,8 +151,10 @@ class UserView(ModelViewSet):
         serializer=finser.ExpenseSerializer(salaries,many=True)
         return Response(serializer.data)
 
+    @authentication_classes([SessionAuthentication])
     @action(detail=False, methods=['GET'])
     def me(self, request):
+        self.permission_classes=[permissions.IsAuthenticated]
         user=self.get_user()
         if user!="AnonymousUser":
             print(user.is_active)
