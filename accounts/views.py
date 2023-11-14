@@ -15,7 +15,7 @@ from drf_yasg import openapi
 from rest_framework.views import APIView
 from django.http import FileResponse
 from conf import permissions
-from rest_framework.decorators import authentication_classes
+from rest_framework.decorators import authentication_classes,permission_classes
 from rest_framework.authentication import SessionAuthentication
 
 
@@ -81,48 +81,25 @@ class UserView(ModelViewSet):
     serializer_class=serializers.UserSerializer
     permission_classes=[permissions.TasischiPermission]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
         if type(self.request.user)==AnonymousUser:
             return "AnonymousUser"
         return self.request.user
 
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                'username',  # parameter name
-                openapi.IN_QUERY,
-                description="Username to check",
-                type=openapi.TYPE_STRING,
-            ),
-        ]
-    )
     @action(detail=False, methods=['GET'])
     def check_username_exists(self, request):
         username = request.query_params.get('username')
         if not username or len(username)<13:
             return Response({"error": "Username parameter is missing."}, status=status.HTTP_400_BAD_REQUEST)
         user_exists = get_user_model().objects.filter(username__endswith=username[1:]).exists()
-
         if user_exists:
             return Response({"exists": True}, status=status.HTTP_200_OK)
         else:
             return Response({"exists": False}, status=status.HTTP_200_OK)
         
-    @action(detail=False, methods=['GET'])
-    def list_for_face_id(self, request):
-        queryset = self.filter_queryset(self.get_queryset())
-        context=self.get_serializer_context()
-        serializer = serializers.UserForFaceIDSerializer(queryset, many=True,context=context)
-        return Response(serializer.data)
-
+    @authentication_classes([SessionAuthentication])
+    @permission_classes([permissions.IsAuthenticated])
     @action(detail=False, methods=['GET'])
     def to_tasks_users(self, request):
         from school import serializers as schoolser
@@ -132,15 +109,8 @@ class UserView(ModelViewSet):
         serializer=schoolser.TaskSerializer(tasks,many=True,context=context)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['GET'])
-    def from_tasks_users(self, request):
-        from school import serializers as schoolser
-        instance = self.get_user()
-        tasks=instance.class_of_school.from_tasks.all()
-        context=self.get_serializer_context()
-        serializer=schoolser.TaskSerializer(tasks,many=True,context=context)
-        return Response(serializer.data)
-
+    @authentication_classes([SessionAuthentication])
+    @permission_classes([permissions.IsAuthenticated])
     @action(detail=False, methods=['GET'])
     def get_salaries(self, request):
         from myconf.conf import get_model
@@ -152,9 +122,9 @@ class UserView(ModelViewSet):
         return Response(serializer.data)
 
     @authentication_classes([SessionAuthentication])
+    @permission_classes([permissions.IsAuthenticated])
     @action(detail=False, methods=['GET'])
     def me(self, request):
-        self.permission_classes=[permissions.IsAuthenticated]
         user=self.get_user()
         if user!="AnonymousUser":
             print(user.is_active)
@@ -178,6 +148,8 @@ class UserView(ModelViewSet):
             return Response(serializer.data)
         return Response({"user":user})
 
+    @authentication_classes([SessionAuthentication])
+    @permission_classes([permissions.IsAuthenticated])
     @action(detail=False, methods=['GET'])
     def get_my_attendances(self, request):
         from .serializers import AttendanceSerializer
@@ -195,19 +167,12 @@ class UserView(ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['GET'])
-    def change_active_to_passive(self, request,pk=None):
+    def change_status(self, request,pk=None):
+        status=True if request.GET.get("status") == 'true' else False
         user=self.get_object()
-        user.is_active=False
+        user.is_active=status
         user.save()
         return Response({"message":"success"})
-
-    @action(detail=True, methods=['GET'])
-    def change_passive_to_active(self, request,pk=None):
-        user=self.get_object()
-        user.is_active=True
-        user.save()
-        return Response({"message":"success"})
-
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -217,6 +182,7 @@ class UserView(ModelViewSet):
 class Type_of_Admin_View(ModelViewSet):
     queryset=get_model(conf.TYPE_OF_ADMIN).objects.all()
     serializer_class=serializers.Type_of_Admin_Serializer
+    permission_classes=[permissions.TasischiPermission]
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -226,6 +192,7 @@ class Type_of_Admin_View(ModelViewSet):
 class Permission_View(ModelViewSet):
     queryset=get_model(conf.PERMISSION).objects.all()
     serializer_class=serializers.Permission_Serializer
+    # TODO
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -256,6 +223,7 @@ def delete_parent(sender, instance, **kwargs):
 class Admin_View(ModelViewSet):
     queryset=get_model(conf.ADMIN).objects.all()
     serializer_class=serializers.AdminSerializer
+    # TODO
 
     def update(self, request, *args, **kwargs):
         serializer=global_update(self, request, *args, **kwargs,model=conf.ADMIN,types=models.FileField)

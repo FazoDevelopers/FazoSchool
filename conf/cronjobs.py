@@ -10,6 +10,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 import os,json
+
 def check_discount(study_price,student,price):
     if student.discount_type:
         discount=student.discount
