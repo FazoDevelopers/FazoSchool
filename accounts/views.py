@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from sympy import im, per
 from myconf.conf import get_model,get_type_name_field
 from myconf import conf
 from rest_framework.viewsets import ModelViewSet
@@ -10,14 +9,10 @@ from rest_framework import status
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from rest_framework.decorators import action
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
 from rest_framework.views import APIView
 from django.http import FileResponse
 from conf import permissions
-from rest_framework.decorators import authentication_classes,permission_classes
-from rest_framework.authentication import SessionAuthentication
-
+from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
 def global_update(self, request, *args, **kwargs):
@@ -98,9 +93,7 @@ class UserView(ModelViewSet):
         else:
             return Response({"exists": False}, status=status.HTTP_200_OK)
         
-    @authentication_classes([SessionAuthentication])
-    @permission_classes([permissions.IsAuthenticated])
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
     def to_tasks_users(self, request):
         from school import serializers as schoolser
         instance = self.get_user()
@@ -109,9 +102,7 @@ class UserView(ModelViewSet):
         serializer=schoolser.TaskSerializer(tasks,many=True,context=context)
         return Response(serializer.data)
 
-    @authentication_classes([SessionAuthentication])
-    @permission_classes([permissions.IsAuthenticated])
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
     def get_salaries(self, request):
         from myconf.conf import get_model
         from myconf import conf
@@ -121,9 +112,7 @@ class UserView(ModelViewSet):
         serializer=finser.ExpenseSerializer(salaries,many=True)
         return Response(serializer.data)
 
-    @authentication_classes([SessionAuthentication])
-    @permission_classes([permissions.IsAuthenticated])
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
     def me(self, request):
         user=self.get_user()
         if user!="AnonymousUser":
@@ -148,9 +137,7 @@ class UserView(ModelViewSet):
             return Response(serializer.data)
         return Response({"user":user})
 
-    @authentication_classes([SessionAuthentication])
-    @permission_classes([permissions.IsAuthenticated])
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
     def get_my_attendances(self, request):
         from .serializers import AttendanceSerializer
         instance = self.get_user()
@@ -158,7 +145,7 @@ class UserView(ModelViewSet):
         serializer=AttendanceSerializer(attendances,many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['GET'],permission_classes=[IsAuthenticated])
     def get_user_attendances(self, request,pk=None):
         from .serializers import AttendanceSerializer
         instance = self.get_object()
@@ -182,7 +169,7 @@ class UserView(ModelViewSet):
 class Type_of_Admin_View(ModelViewSet):
     queryset=get_model(conf.TYPE_OF_ADMIN).objects.all()
     serializer_class=serializers.Type_of_Admin_Serializer
-    permission_classes=[permissions.TasischiPermission]
+    permission_classes=[permissions.TasischiOrManagerPermission]
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -192,7 +179,7 @@ class Type_of_Admin_View(ModelViewSet):
 class Permission_View(ModelViewSet):
     queryset=get_model(conf.PERMISSION).objects.all()
     serializer_class=serializers.Permission_Serializer
-    # TODO
+    permission_classes=[permissions.TasischiOrManagerPermission]
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -223,7 +210,7 @@ def delete_parent(sender, instance, **kwargs):
 class Admin_View(ModelViewSet):
     queryset=get_model(conf.ADMIN).objects.all()
     serializer_class=serializers.AdminSerializer
-    # TODO
+    permission_classes=[permissions.TasischiOrManagerPermission]
 
     def update(self, request, *args, **kwargs):
         serializer=global_update(self, request, *args, **kwargs,model=conf.ADMIN,types=models.FileField)
@@ -237,6 +224,7 @@ class Admin_View(ModelViewSet):
 class Teacher_View(ModelViewSet):
     queryset=get_model(conf.TEACHER).objects.all()
     serializer_class=serializers.TeacherSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
@@ -250,6 +238,7 @@ class Teacher_View(ModelViewSet):
                 return self.request.user.teacher
             return "ItIsNotTeacher"
         return "AnonymousUser"
+    
     @action(detail=False, methods=['GET'])
     def teachers_for_class(self, request):
         queryset = self.filter_queryset(self.get_queryset())
@@ -260,27 +249,7 @@ class Teacher_View(ModelViewSet):
                 teachers.append(serializer.data)
         return Response(teachers)
     
-    @swagger_auto_schema(
-        operation_summary="Upload a single file.",
-        operation_description="Upload a single file using multipart/form-data.",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['lesson_table_file'],
-            properties={
-                'lesson_table_file': openapi.Schema(
-                    type=openapi.TYPE_FILE,
-                    format=openapi.FORMAT_BINARY,  # Specify binary format
-                    # description="The allowed extensions excel(xls,xlsx)."
-                )
-            }
-        ),
-        consumes=["multipart/form-data"],  # Set the content type
-        responses={
-            status.HTTP_201_CREATED: "File uploaded successfully.",
-            status.HTTP_400_BAD_REQUEST: "Bad request.",
-        }
-    )
-    @action(detail=False, methods=['POST'])
+    @action(detail=False, methods=['POST'],permission_classes=[permissions.TeacherPermission])
     def add_lesson_with_file(self, request):
         uploaded_file = request.data.get('lesson_table_file')
         if not uploaded_file:
@@ -289,30 +258,8 @@ class Teacher_View(ModelViewSet):
         instance.lessons_file=uploaded_file
         instance.save()
         return Response({"message": "success"}, status=status.HTTP_200_OK)
-    @swagger_auto_schema(
-        operation_summary="Upload a single file.",
-        operation_description="Upload a single file using multipart/form-data.",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['lesson_table_file'],
-            properties={
-                'message': openapi.Schema(
-                    type=openapi.TYPE_STRING,  # Changed format to "string"
-                ),
-                'file_message': openapi.Schema(
-                    type=openapi.TYPE_FILE,
-                    format=openapi.FORMAT_BINARY,
-                    # description="The allowed extensions excel(xls,xlsx)."
-                ),
-            }
-        ),
-        consumes=["multipart/form-data"],
-        responses={
-            status.HTTP_201_CREATED: "File uploaded successfully.",
-            status.HTTP_400_BAD_REQUEST: "Bad request.",
-        }
-    )
-    @action(detail=False, methods=['POST'])
+
+    @action(detail=False, methods=['POST'],permission_classes=[permissions.TeacherPermission])
     def add_lesson_theme(self, request):
         instance=self.get_teacher()
         message = request.data.get('message')
@@ -323,7 +270,7 @@ class Teacher_View(ModelViewSet):
         get_model(conf.TEACHER_LESSON).objects.create(teacher=instance,message=message)
         return Response({"message": "success"}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['POST'])
+    @action(detail=False, methods=['POST'],permission_classes=[permissions.TeacherPermission])
     def add_task_to_class(self, request):
         from school import serializers
         instance=self.get_teacher()
@@ -335,7 +282,7 @@ class Teacher_View(ModelViewSet):
         serializer.save()
         return Response({"message": "success","data":serializer.data}, status=status.HTTP_200_OK)
     
-    @action(detail=True, methods=['PUT'])
+    @action(detail=True, methods=['PUT'],permission_classes=[permissions.TeacherPermission])
     def update_task_to_class(self, request,pk=None):
         from school import serializers
         instance=self.get_teacher()
@@ -348,12 +295,12 @@ class Teacher_View(ModelViewSet):
         serializer.save()
         return Response({"message": "success","data":serializer.data}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['DELETE'])
+    @action(detail=True, methods=['DELETE'],permission_classes=[permissions.TeacherPermission])
     def delete_task_to_class(self, request,pk=None):
         get_model(conf.TASK_FOR_CLASS).objects.get(id=pk).delete()
         return Response({"message": "success"}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_lesson_themes(self, request):
         from school.serializers import Teacher_LessonSerializer
         instance=self.get_teacher()
@@ -361,14 +308,14 @@ class Teacher_View(ModelViewSet):
         context=self.get_serializer_context()
         serializer=Teacher_LessonSerializer(lesson_themes,many=True,context=context)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=['GET'])
+    
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_lesson_with_file_url(self, request):
         instance = self.get_teacher()
         file_url = request.build_absolute_uri(instance.lessons_file.url)
         return Response({"lesson_table": file_url}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_lesson_with_file(self, request):
         instance = self.get_teacher()
         file_path = instance.lessons_file.path
@@ -376,7 +323,7 @@ class Teacher_View(ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="{instance.lessons_file.name}"'
         return response
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_class_of_teacher(self, request):
         from school.serializers import ClassForTeacherSerializer
         instance = self.get_teacher()
@@ -398,6 +345,7 @@ class Teacher_View(ModelViewSet):
 class Employer_View(ModelViewSet):
     queryset=get_model(conf.EMPLOYER).objects.all()
     serializer_class=serializers.EmployerSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
     def update(self, request, *args, **kwargs):
         serializer=global_update(self, request, *args, **kwargs,model=conf.EMPLOYER,types=models.FileField)
@@ -411,12 +359,14 @@ class Employer_View(ModelViewSet):
 class Student_View(ModelViewSet):
     queryset=get_model(conf.STUDENT).objects.all()
     serializer_class=serializers.StudentSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
         if type(self.request.user)==AnonymousUser:
             return "AnonymousUser"
         return self.request.user
+    
     def get_student(self):
         from django.contrib.auth.models import AnonymousUser
         if type(self.request.user)!=AnonymousUser:
@@ -425,7 +375,7 @@ class Student_View(ModelViewSet):
             return "ItIsNotStudent"
         return "AnonymousUser"
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.ParentPermission])
     def get_students_for_parent(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         students=[]
@@ -435,26 +385,6 @@ class Student_View(ModelViewSet):
                 students.append(serializer.data)
         return Response(students)
 
-    @swagger_auto_schema(
-        operation_summary="Upload a single file.",
-        operation_description="Upload a single file using multipart/form-data.",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['students_table'],
-            properties={
-                'students_table': openapi.Schema(
-                    type=openapi.TYPE_FILE,
-                    format=openapi.FORMAT_BINARY,  # Specify binary format
-                    description="The allowed extensions excel(xls,xlsx)."
-                )
-            }
-        ),
-        consumes=["multipart/form-data"],  # Set the content type
-        responses={
-            status.HTTP_201_CREATED: "File uploaded successfully.",
-            status.HTTP_400_BAD_REQUEST: "Bad request.",
-        }
-    )
     @action(detail=False, methods=['POST'])
     def add_student_with_excel(self, request):
         uploaded_file = request.data.get('students_table')
@@ -469,7 +399,7 @@ class Student_View(ModelViewSet):
             return Response({"error": "Invalid file extension."}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"message": "success"}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def student_debts(self, request):
         instance = self.get_student()
         from finance import serializers as finserializer
@@ -487,7 +417,7 @@ class Student_View(ModelViewSet):
         serializer=finserializer.StudentGetDebtSerializer(debts,many=True,context=context)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def student_pays(self, request):
         instance = self.get_student()
         from finance import serializers as finserializer
@@ -496,7 +426,7 @@ class Student_View(ModelViewSet):
         serializer=finserializer.InComeGetSerializer(debts,many=True,context=context)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def get_student_attendances(self, request):
         from school.serializers import AttendanceSerializer
         instance = self.get_user()
@@ -505,7 +435,7 @@ class Student_View(ModelViewSet):
         serializer=AttendanceSerializer(attendances,many=True,context=context)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def student_grades(self, request):
         from school import serializers as schoolser
         instance = self.get_student()
@@ -513,7 +443,7 @@ class Student_View(ModelViewSet):
         serializer=schoolser.Grade_Serializer(grades,many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def student_tasks(self, request):
         from school import serializers as schoolser
         instance = self.get_student()
@@ -522,7 +452,7 @@ class Student_View(ModelViewSet):
         serializer=schoolser.TaskForClassSerializer(tasks,many=True,context=context)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def get_lessons_of_student(self, request, pk=None):
         from .serializers import Lesson_Serializer
         instance = self.get_student().class_of_school
@@ -590,7 +520,7 @@ class Parent_View(ModelViewSet):
             return parent.children.all()
         return 'ItHasNotChildren'
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.ParentPermission])
     def get_children_list(self, request):
         from .serializers import StudentSerializer
         children=self.get_children()
@@ -600,7 +530,7 @@ class Parent_View(ModelViewSet):
             return Response(serializer.data)
         return Response(children)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.ParentPermission])
     def children_debts(self, request):
         children=self.get_children()
         if children!="ItHasNotChildren":
@@ -623,7 +553,7 @@ class Parent_View(ModelViewSet):
             return Response(data)
         return Response(children)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.ParentPermission])
     def children_pays(self, request):
         data=[]
         children=self.get_children()
@@ -636,7 +566,7 @@ class Parent_View(ModelViewSet):
                 data+=serializer.data
         return Response(data)
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.ParentPermission])
     def get_children_attendances(self, request):
         from school.serializers import AttendanceSerializer
         data=[]
@@ -655,6 +585,7 @@ class Parent_View(ModelViewSet):
         return Response({"success":"true"},status=status.HTTP_200_OK)
 
 class General_Statistics(APIView):
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     def get(self,request,*args,**kwargs):
         data={
             "admins":len(get_model(conf.ADMIN).objects.all()),

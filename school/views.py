@@ -19,21 +19,14 @@ from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Count
 from django.core.files.storage import FileSystemStorage
 from django.db import transaction
-
-def get_user(request):
-    return request.user
-def get_all_weeks_of_current_year():
-    current_year = datetime.datetime.now().year
-    all_weeks = set()
-    for day in range(1, 366):  # Iterate through all days of the year
-        current_date = datetime.date(current_year, 1, 1) + datetime.timedelta(days=day - 1)
-        iso_week = current_date.isocalendar()[1]
-        all_weeks.add(iso_week)
-    return sorted(list(all_weeks))
+# permissions
+from conf import permissions
+from rest_framework.permissions import IsAuthenticated
 
 class ScienceView(ModelViewSet):
     queryset=get_model(conf.SCIENCE).objects.all()
     serializer_class=serializers.ScienceSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     lookup_field = 'pk'
 
     @action(detail=True, methods=['GET'])
@@ -47,6 +40,7 @@ class ScienceView(ModelViewSet):
 class ClassView(ModelViewSet):
     queryset=get_model(conf.CLASS).objects.all()
     serializer_class=serializers.ClassSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission]
     lookup_field = 'pk'
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
@@ -70,7 +64,7 @@ class ClassView(ModelViewSet):
             return "ItIsNotTeacher"
         return "AnonymousUser"
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
     def get_students_of_classes(self, request,):
         from accounts.serializers import StudentSerializer
         queryset = self.filter_queryset(self.get_queryset())
@@ -84,7 +78,7 @@ class ClassView(ModelViewSet):
             data.append(class_data)
         return Response(data)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_students_of_class(self, request):
         from accounts.serializers import StudentSerializer
         instance = self.get_teacher().sinf
@@ -92,7 +86,7 @@ class ClassView(ModelViewSet):
         serializer=StudentSerializer(students,many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
     def get_students_of_class_pk(self, request, pk=None):
         from accounts.serializers import StudentSerializer
         instance = self.get_object()
@@ -100,7 +94,7 @@ class ClassView(ModelViewSet):
         serializer=StudentSerializer(students,many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_lessons_of_class(self, request, pk=None):
         from .serializers import Lesson_Serializer
         instance = self.get_teacher().sinf
@@ -108,7 +102,7 @@ class ClassView(ModelViewSet):
         serializer=Lesson_Serializer(lessons,many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
     def get_lessons_of_class_pk(self, request, pk=None):
         from .serializers import Lesson_Serializer
         instance = self.get_object()
@@ -116,7 +110,7 @@ class ClassView(ModelViewSet):
         serializer=Lesson_Serializer(lessons,many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_attendances_of_class(self, request, pk=None):
         from .serializers import AttendanceSerializer
         instance = self.get_teacher().sinf
@@ -136,7 +130,7 @@ class ClassView(ModelViewSet):
             attendances_arr.append(student_dict)
         return Response(attendances_arr)#TODO
     
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
     def get_attendances_of_class_pk(self, request, pk=None):
         from accounts.serializers import StudentSerializer
         from .serializers import AttendanceSerializer
@@ -155,9 +149,10 @@ class ClassView(ModelViewSet):
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 
-class AttendanceView(ModelViewSet):#TODO PUT method date
+class AttendanceView(ModelViewSet):
     queryset=get_model(conf.ATTENDANCE).objects.all()
     serializer_class=serializers.AttendanceSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission]
     filterset_class = AttendanceFilter
 
     def get_queryset(self):
@@ -197,59 +192,12 @@ class RoomView(ModelViewSet):
 class Lesson_TimeView(ModelViewSet):
     queryset=get_model(conf.LESSON_TIME).objects.all()
     serializer_class=serializers.Lesson_Time_Serializer
-  
-def weekday_by_day(desired_weekday):
-    current_date = datetime.date.today()
-    weekday_number = current_date.weekday()
-    days_until_desired_weekday = (desired_weekday - weekday_number) % 7
-    desired_date = current_date + datetime.timedelta(days=days_until_desired_weekday)
-    return desired_date
-
-def weekday_by_week(desired_weekday):
-    current_date = datetime.date.today()
-    difference = current_date.weekday() - desired_weekday
-    desired_date = current_date - datetime.timedelta(days=difference)
-    return desired_date
 
 class LessonView(ModelViewSet):
     queryset=get_model(conf.LESSON).objects.all()
     serializer_class=serializers.Lesson_Serializer
-    week_days=[
-        "MONDAY",
-        "TUESDAY",
-        "WEDNESDAY",
-        "THURSDAY",
-        "FRIDAY",
-        "SATURDAY"
-        ]
-    day_name_to_id = {
-        "MONDAY": 0,
-        "TUESDAY": 1,
-        "WEDNESDAY": 2,
-        "THURSDAY": 3,
-        "FRIDAY": 4,
-        "SATURDAY": 5,
-    }
-    @swagger_auto_schema(
-    operation_summary="Upload a single file.",
-    operation_description="Upload a single file using multipart/form-data.",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        required=['lessons_table'],
-        properties={
-            'lessons_table': openapi.Schema(
-                type=openapi.TYPE_FILE,
-                format=openapi.FORMAT_BINARY,  # Specify binary format
-                description="The allowed extensions excel(xls,xlsx)."
-            )
-        }
-    ),
-    consumes=["multipart/form-data"],  # Set the content type
-    responses={
-        status.HTTP_201_CREATED: "File uploaded successfully.",
-        status.HTTP_400_BAD_REQUEST: "Bad request.",
-    }
-    )
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
+
     @action(detail=False, methods=['POST'])
     def add_lesson_with_excel(self, request):
         uploaded_file = request.data.get('lessons_table')
@@ -269,15 +217,13 @@ class LessonView(ModelViewSet):
                 obj = AddLessonWithExcel(file_path)
                 obj.start()
         except Exception as e:
-            # Handle exceptions and provide an appropriate error response
             return Response({"error": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         finally:
-            # Always attempt to delete the uploaded file
             if fs.exists(filename):
                 fs.delete(filename)
         return Response({"message": "success"}, status=status.HTTP_200_OK)
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
     def get_lessons_of_class(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         data=[]
@@ -295,30 +241,6 @@ class LessonView(ModelViewSet):
             data.append(obj)
         return Response(data)
 
-
-
-    def week_list(self, request, *args, **kwargs):
-        data = []
-        queryset = self.filter_queryset(self.get_queryset())
-        lessons_by_day = {day: [] for day in self.week_days}
-        for lesson in queryset.filter(lesson_date__in=self.week_days):
-            lessons_by_day[lesson.lesson_date].append(lesson)
-        for week_day, day_lessons in lessons_by_day.items():
-            day_id = self.day_name_to_id.get(week_day, -1)
-            day_items = self.get_serializer(day_lessons, many=True).data
-            day_date=0
-            week=kwargs['week']
-            if week=="weekday_by_week":
-                day_date=weekday_by_week(day_id)
-            elif week=="weekday_by_day":
-                day_date=weekday_by_day(day_id)
-            data.append({
-                "day_name": week_day,
-                "date": day_date,
-                "lessons": day_items
-            })
-        return Response(data)   
-
 class GradeView(ModelViewSet):
     queryset=get_model(conf.GRADE).objects.all()
     serializer_class=serializers.Grade_Serializer
@@ -326,16 +248,19 @@ class GradeView(ModelViewSet):
 class TaskView(ModelViewSet):
     queryset=get_model(conf.TASK).objects.all()
     serializer_class=serializers.TaskSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     filterset_fields="__all__"
 
 class TaskForClassView(ModelViewSet):
     queryset=get_model(conf.TASK_FOR_CLASS).objects.all()
     serializer_class=serializers.TaskForClassSerializer
+    permission_classes=[permissions.TeacherPermission]
     filterset_fields="__all__"
     
 class Parent_CommentView(ModelViewSet):
     queryset=get_model(conf.PARENT_COMMENT).objects.all()
     serializer_class=serializers.Parent_CommentSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.ParentPermission]
     filterset_fields="__all__"
 
     @action(detail=False,methods=['GET'])
@@ -399,10 +324,12 @@ class Parent_CommentView(ModelViewSet):
 class Teacher_LessonView(ModelViewSet):
     queryset=get_model(conf.TEACHER_LESSON).objects.all()
     serializer_class=serializers.Teacher_LessonSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission]
 
 class QuestionsView(ModelViewSet):
     queryset=get_model(conf.QUESTION).objects.all()
     serializer_class=serializers.QuestionSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission,permissions.StudentPermission]
 
     @action(methods=["POST"],detail=True)
     def check_answer(self,request,pk=None):
@@ -415,21 +342,4 @@ class QuestionsView(ModelViewSet):
 class CompanyView(ModelViewSet):
     queryset=get_model(conf.COMPANY).objects.all()
     serializer_class=serializers.CompanySerializer
-
-
-
-# lesson class
-# def list(self, request, *args, **kwargs):
-#     queryset = self.filter_queryset(self.get_queryset())
-
-#     page = self.paginate_queryset(queryset)
-#     week = self.request.GET.get("week")
-#     if page is not None:
-#         serializer = self.get_serializer(page, many=True)
-#         return self.get_paginated_response(serializer.data)
-    
-#     elif week is not None and week in ["weekday_by_week","weekday_by_day"]:
-#         return self.week_list(self, request,week=week, *args, **kwargs)
-
-#     serializer = self.get_serializer(queryset, many=True)
-#     return Response(serializer.data)
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]

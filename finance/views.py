@@ -6,16 +6,20 @@ from . import serializers
 from . import filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from conf import permissions
+from rest_framework.permissions import IsAuthenticated
 # Create your views here.
 
 class StudentDebtView(ModelViewSet):
     queryset=get_model(conf.STUDENT_DEBT).objects.all()
     serializer_class=serializers.StudentDebtSerializer
+    permission_classes=[permissions.TasischiOrFinancePermission]
     filterset_fields="__all__"
 
 class InComeView(ModelViewSet):
     queryset=get_model(conf.INCOME).objects.all()
     serializer_class=serializers.InComeSerializer
+    permission_classes=[permissions.TasischiOrFinancePermission]
 
     def get_serializer_class(self):
         if self.request.method=="GET":
@@ -26,14 +30,16 @@ class ExpenseView(ModelViewSet):
     queryset=get_model(conf.EXPENSE).objects.all()
     serializer_class=serializers.ExpenseSerializer
     filterset_class=filters.ExpenseFilter
+    permission_classes=[permissions.TasischiOrFinancePermission]
 
 class Data_Finance(APIView):
+    permission_classes=[permissions.TasischiOrFinancePermission]
     def get(self,request):
         import calendar
         from django.db.models import Sum
         from .models import InCome,Expense
         if (len(InCome.objects.all()) and len(Expense.objects.all()))==False:
-            return Response([])#TODO      from First Element to current month
+            return Response([])
         last_income=InCome.objects.latest('created_date')
         first_income=InCome.objects.earliest('created_date')
         last_expense=Expense.objects.latest('created_date')
