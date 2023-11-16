@@ -139,7 +139,7 @@ class UserView(ModelViewSet):
 
     @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
     def get_my_attendances(self, request):
-        from .serializers import AttendanceSerializer
+        from school.serializers import AttendanceSerializer
         instance = self.get_user()
         attendances=get_model(conf.ATTENDANCE).objects.filter(user=instance)
         serializer=AttendanceSerializer(attendances,many=True)
@@ -147,7 +147,7 @@ class UserView(ModelViewSet):
 
     @action(detail=True, methods=['GET'],permission_classes=[IsAuthenticated])
     def get_user_attendances(self, request,pk=None):
-        from .serializers import AttendanceSerializer
+        from school.serializers import AttendanceSerializer
         instance = self.get_object()
         attendances=get_model(conf.ATTENDANCE).objects.filter(user=instance)
         serializer=AttendanceSerializer(attendances,many=True)
@@ -454,7 +454,7 @@ class Student_View(ModelViewSet):
 
     @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def get_lessons_of_student(self, request, pk=None):
-        from .serializers import Lesson_Serializer
+        from school.serializers import Lesson_Serializer
         instance = self.get_student().class_of_school
         lessons=get_model(conf.LESSON).objects.filter(student_class=instance)
         serializer=Lesson_Serializer(lessons,many=True)
@@ -472,6 +472,7 @@ class Student_View(ModelViewSet):
 class Parent_View(ModelViewSet):
     queryset=get_model(conf.PARENT).objects.all()
     serializer_class=serializers.ParentSerializer
+    permission_classes=[permissions.ParentPermission,permissions.TasischiOrManagerOrAdminPermission]
 
     def update(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
