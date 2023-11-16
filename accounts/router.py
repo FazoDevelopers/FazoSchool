@@ -1,7 +1,7 @@
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from . import views
 
-router=DefaultRouter()
+router=SimpleRouter()
 router.register("users",views.UserView,basename="user")
 router.register("types-admin",views.Type_of_Admin_View,basename="types")
 router.register("permissions-admin",views.Permission_View,basename="permissions")

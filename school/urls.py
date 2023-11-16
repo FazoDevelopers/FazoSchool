@@ -1,9 +1,9 @@
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from . import views
 
-router=DefaultRouter()
+router=SimpleRouter()
 router.register("sciences",views.ScienceView,basename="sciences")
-router.register(r"classes",views.ClassView,basename="classes")
+router.register("classes",views.ClassView,basename="classes")
 router.register("attendances",views.AttendanceView,basename="attendances")
 router.register("rooms",views.RoomView,basename="rooms")
 router.register("lesson_times",views.Lesson_TimeView,basename="lesson_times")
