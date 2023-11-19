@@ -57,6 +57,7 @@ class Type_of_Admin(models.Model):
 
 class Permission(models.Model):
     title=models.CharField(max_length=255,verbose_name="nomi:")
+    path=models.CharField(max_length=255,blank=True,null=True)
     slug=models.SlugField(blank=True,null=True,editable=False)
 
     def __str__(self):

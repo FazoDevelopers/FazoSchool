@@ -82,7 +82,7 @@ class UserView(ModelViewSet):
             return "AnonymousUser"
         return self.request.user
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
     def check_username_exists(self, request):
         username = request.query_params.get('username')
         if not username or len(username)<13:
@@ -97,7 +97,7 @@ class UserView(ModelViewSet):
     def to_tasks_users(self, request):
         from school import serializers as schoolser
         instance = self.get_user()
-        tasks=instance.to_tasks.all()
+        tasks=instance.to_tasks.all().filter(complete_to_user=True)
         context=self.get_serializer_context()
         serializer=schoolser.TaskSerializer(tasks,many=True,context=context)
         return Response(serializer.data)
@@ -153,7 +153,7 @@ class UserView(ModelViewSet):
         serializer=AttendanceSerializer(attendances,many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['GET'])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
     def change_status(self, request,pk=None):
         status=True if request.GET.get("status") == 'true' else False
         user=self.get_object()
@@ -269,6 +269,14 @@ class Teacher_View(ModelViewSet):
             return Response({"message": "success"}, status=status.HTTP_200_OK)
         get_model(conf.TEACHER_LESSON).objects.create(teacher=instance,message=message)
         return Response({"message": "success"}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
+    def get_task_to_class(self, request):
+        from school import serializers
+        instance=self.get_teacher()
+        tasks=get_model(conf.TASK_FOR_CLASS).objects.filter(from_teacher=instance)
+        serializer=serializers.TaskForClassSerializer(data=tasks,context=self.get_serializer_context())
+        return Response(serializer.data)
 
     @action(detail=False, methods=['POST'],permission_classes=[permissions.TeacherPermission])
     def add_task_to_class(self, request):
@@ -472,7 +480,7 @@ class Student_View(ModelViewSet):
 class Parent_View(ModelViewSet):
     queryset=get_model(conf.PARENT).objects.all()
     serializer_class=serializers.ParentSerializer
-    permission_classes=[permissions.ParentPermission,permissions.TasischiOrManagerOrAdminPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
     def update(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())

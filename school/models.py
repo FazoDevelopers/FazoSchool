@@ -208,5 +208,5 @@ class Company(models.Model):
     end_date=models.DateField(blank=True,null=True)
     study_price=models.IntegerField(default=0)
     hostel_price=models.IntegerField(default=0)
-    camera_entrance=models.URLField(blank=True,null=True)
-    camera_exit=models.URLField(blank=True,null=True)
+    camera_entrance=models.CharField(max_length=500,blank=True,null=True)
+    camera_exit=models.CharField(max_length=500,blank=True,null=True)

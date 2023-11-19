@@ -16,12 +16,37 @@
         {"title": "Admin"}
     ],
     "permissions-admin":[
-        {"title": "O'quvchini ma'lumotlarini tahrirlash"},
-        {"title": "Sinf hosil qilish"},
-        {"title": "Dars jadvali bilan ishlash"},
-        {"title": "Davomatlarni nazorat qilish"},
-        {"title": "O'quvchi to'lovini ko'rish(ReadOnly)"},
-        {"title": "O'qituvchi ma'lumotlarini tahrirlash"}
+        [
+            {
+                "title": "O'qituvchi ma'lumotlarini tahrirlash",
+                "path": "/teachers"
+            },
+            {
+                "title": "O'quvchi ma'lumotlarini tahrirlash",
+                "path": "/students"
+            },
+            {
+                "title": "O'quvchi to'lovini ko'rish",
+                "path": null
+            },
+            {
+                "title": "Ota-Ona ma'lumotlarini tahrirlash",
+                "path": "/parents"
+            },
+            {
+                "title": "Vazifalar berish va tekshirish",
+                "path": "/tasks"
+            },
+            {
+                "title": "Davomatni nazorat qilish",
+                "path": "/attandance"
+            },
+            {
+                "title": "Xodim ma'lumotlarini tahrirlash",
+                "path": "/staffs",
+                "slug": "xodim-malumotlarini-tahrirlash"
+            }
+        ]
     ],
     "classes":[
         {

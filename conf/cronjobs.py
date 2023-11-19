@@ -99,7 +99,7 @@ def set_assets(request):
     
     permissions_admin_admin=json_data['permissions-admin']
     for permission_admin in permissions_admin_admin:
-        get_model(conf.PERMISSION).objects.get_or_create(title=permission_admin['title'])
+        get_model(conf.PERMISSION).objects.get_or_create(title=permission_admin['title'],path=permission_admin['path'])
 
     classes=json_data['classes']
     for class_of_school in classes:

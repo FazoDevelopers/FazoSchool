@@ -40,7 +40,7 @@ class ScienceView(ModelViewSet):
 class ClassView(ModelViewSet):
     queryset=get_model(conf.CLASS).objects.all()
     serializer_class=serializers.ClassSerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     lookup_field = 'pk'
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
@@ -64,7 +64,7 @@ class ClassView(ModelViewSet):
             return "ItIsNotTeacher"
         return "AnonymousUser"
 
-    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_students_of_classes(self, request,):
         from accounts.serializers import StudentSerializer
         queryset = self.filter_queryset(self.get_queryset())
@@ -86,7 +86,7 @@ class ClassView(ModelViewSet):
         serializer=StudentSerializer(students,many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_students_of_class_pk(self, request, pk=None):
         from accounts.serializers import StudentSerializer
         instance = self.get_object()
@@ -102,7 +102,7 @@ class ClassView(ModelViewSet):
         serializer=Lesson_Serializer(lessons,many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_lessons_of_class_pk(self, request, pk=None):
         from .serializers import Lesson_Serializer
         instance = self.get_object()
@@ -130,7 +130,7 @@ class ClassView(ModelViewSet):
             attendances_arr.append(student_dict)
         return Response(attendances_arr)#TODO
     
-    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission])
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_attendances_of_class_pk(self, request, pk=None):
         from accounts.serializers import StudentSerializer
         from .serializers import AttendanceSerializer
@@ -152,7 +152,7 @@ from dateutil.relativedelta import relativedelta
 class AttendanceView(ModelViewSet):
     queryset=get_model(conf.ATTENDANCE).objects.all()
     serializer_class=serializers.AttendanceSerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     filterset_class = AttendanceFilter
 
     def get_queryset(self):
@@ -177,6 +177,7 @@ class AttendanceView(ModelViewSet):
 class RoomView(ModelViewSet):
     queryset=get_model(conf.ROOM).objects.all()
     serializer_class=serializers.RoomSerializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
     @action(detail=False, methods=['GET'])
     def rooms_for_class(self, request):
@@ -223,7 +224,7 @@ class LessonView(ModelViewSet):
                 fs.delete(filename)
         return Response({"message": "success"}, status=status.HTTP_200_OK)
     
-    @action(detail=False, methods=['GET'],permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['GET'])
     def get_lessons_of_class(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         data=[]
@@ -260,10 +261,10 @@ class TaskForClassView(ModelViewSet):
 class Parent_CommentView(ModelViewSet):
     queryset=get_model(conf.PARENT_COMMENT).objects.all()
     serializer_class=serializers.Parent_CommentSerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.ParentPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission]
     filterset_fields="__all__"
 
-    @action(detail=False,methods=['GET'])
+    @action(detail=False,methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission])
     def list_comments(self,request):
         user=self.request.user
         if user.is_authenticated:
@@ -273,7 +274,7 @@ class Parent_CommentView(ModelViewSet):
                 return Response(serializer.data)
         return Response({"error":"auth"})
 
-    @action(detail=False,methods=['POST'])
+    @action(detail=False,methods=['POST'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission])
     def add_comment(self,request):
         user=self.request.user
         data=dict(request.data)
@@ -298,7 +299,7 @@ class Parent_CommentView(ModelViewSet):
         else:
             return Response({"error":"auth"})
     
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission])
     def get_with_parent(self, request):
         parents=get_model(conf.PARENT).objects.all()
         data=[]
@@ -324,12 +325,12 @@ class Parent_CommentView(ModelViewSet):
 class Teacher_LessonView(ModelViewSet):
     queryset=get_model(conf.TEACHER_LESSON).objects.all()
     serializer_class=serializers.Teacher_LessonSerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission]
 
 class QuestionsView(ModelViewSet):
     queryset=get_model(conf.QUESTION).objects.all()
     serializer_class=serializers.QuestionSerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.TeacherPermission,permissions.StudentPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission|permissions.StudentPermission]
 
     @action(methods=["POST"],detail=True)
     def check_answer(self,request,pk=None):
@@ -342,4 +343,4 @@ class QuestionsView(ModelViewSet):
 class CompanyView(ModelViewSet):
     queryset=get_model(conf.COMPANY).objects.all()
     serializer_class=serializers.CompanySerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
+    # permission_classes=[permissions.TasischiOrManagerOrAdminPermission]

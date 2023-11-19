@@ -4,8 +4,6 @@ from finance.urls import router as finance_router
 from finance import views as finviews
 from .router import router
 from .token import urlpatterns as token_url
-
-from djoser.urls import authtoken
 from django.urls import path
 
 
