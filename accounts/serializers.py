@@ -27,20 +27,20 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             ]
         extra_kwargs = {'password': {'write_only': True}}
-    
+
     def get_type_dict(self,obj):
         type=obj.type_user
         if obj.type_user=="admin":
             type=obj.admin.types.slug
         return type
-      
+
     def create(self, validated_data):
         password = validated_data.pop('password')
         user = get_user_model().objects.create_user(**validated_data)
         user.set_password(password)
         user.save()
         return user
-    
+
 class UserForFaceIDSerializer(serializers.ModelSerializer):
     is_active=serializers.ReadOnlyField()
     class Meta:
@@ -57,7 +57,7 @@ class UserForFaceIDSerializer(serializers.ModelSerializer):
             full_path = os.path.join(settings.MEDIA_ROOT, str(instance.image))
             data['image_full_path'] = full_path
         return data
-      
+
 
 class Type_of_Admin_Serializer(serializers.ModelSerializer):
     class Meta:
@@ -78,20 +78,16 @@ class MeAdminSerializer(serializers.Serializer):
     class Meta:
         model=get_model(conf.ADMIN)
         fields="__all__"
-    
+
     def get_type_dict(self, obj):
-        request = self.context.get('request')
-        serializer_context = {'request': request }
         types = obj.types
-        serializer = Type_of_Admin_Serializer(types, many=False, context=serializer_context)
+        serializer = Type_of_Admin_Serializer(types, many=False, context=self.context)
         return serializer.data
-    
+
     def get_permissions_dict(self, obj):
-        request = self.context.get('request')
-        serializer_context = {'request': request }
         types = obj.permissions.all()
         if types:
-            serializer = Permission_Serializer(types, many=True, context=serializer_context)
+            serializer = Permission_Serializer(types, many=True, context=self.context)
             return serializer.data
         else:
             return []
@@ -113,7 +109,7 @@ class AdminSerializer(serializers.ModelSerializer):
     class Meta:
         model=get_model(conf.ADMIN)
         fields="__all__"
-    
+
     def create(self, validated_data):
         user_data = validated_data.pop('user')
         permissions_data = validated_data.pop('permissions', [])
@@ -128,7 +124,7 @@ class AdminSerializer(serializers.ModelSerializer):
         types = obj.types
         serializer = Type_of_Admin_Serializer(types, many=False, context=serializer_context)
         return serializer.data
-    
+
     def get_permissions_dict(self, obj):
         request = self.context.get('request')
         serializer_context = {'request': request }
@@ -138,7 +134,7 @@ class AdminSerializer(serializers.ModelSerializer):
             return serializer.data
         else:
             return []
-    
+
 class TeacherSerializer(serializers.ModelSerializer):
     user=UserSerializer()
     sciences_dict=serializers.SerializerMethodField('get_sciences_dict')
@@ -146,15 +142,15 @@ class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model=get_model(conf.TEACHER)
         fields="__all__"
-    
+
     def create(self, validated_data):
         user_data = validated_data.pop('user')  # Extract user data
-        sciences_data = validated_data.pop('sciences', []) 
+        sciences_data = validated_data.pop('sciences', [])
         user_instance = UserSerializer().create(user_data)  # Create user
         teacher = get_model(conf.TEACHER).objects.create(user=user_instance, **validated_data)
         teacher.sciences.set(sciences_data)
         return teacher
-    
+
     def get_sciences_dict(self, obj):
         from school.serializers import ScienceSerializer
         request = self.context.get('request')
@@ -172,7 +168,7 @@ class EmployerSerializer(serializers.ModelSerializer):
     class Meta:
         model=get_model(conf.EMPLOYER)
         fields="__all__"
-    
+
     def create(self, validated_data):
         user_data = validated_data.pop('user')  # Extract user data
         user_instance = UserSerializer().create(user_data)  # Create user
@@ -186,7 +182,7 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model=get_model(conf.STUDENT)
         fields="__all__"
-    
+
     def get_sinf_dict(self, obj):
         sinf = obj.class_of_school
         if sinf:
@@ -202,7 +198,7 @@ class StudentSerializer(serializers.ModelSerializer):
             }
         else:
             return {}
-    
+
     def create(self, validated_data):
         user_data = validated_data.pop('user')  # Extract user data
         user_instance = UserSerializer().create(user_data)  # Create user
@@ -216,10 +212,10 @@ class ParentSerializer(serializers.ModelSerializer):
     class Meta:
         model=get_model(conf.PARENT)
         fields="__all__"
-    
+
     def create(self, validated_data):
         user_data = validated_data.pop('user')  # Extract user data
-        children = validated_data.pop('children', []) 
+        children = validated_data.pop('children', [])
         user_instance = UserSerializer().create(user_data)  # Create user
         parent = get_model(conf.PARENT).objects.create(user=user_instance, **validated_data)
         parent.children.set(children)
