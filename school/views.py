@@ -12,16 +12,12 @@ from rest_framework import status
 from rest_framework.decorators import action
 # datetime import
 import datetime
-# swagger conf
-from drf_yasg import openapi
-from drf_yasg.utils import swagger_auto_schema
 # django import
 from django.db.models import Count
 from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 # permissions
 from conf import permissions
-from rest_framework.permissions import IsAuthenticated
 
 class ScienceView(ModelViewSet):
     queryset=get_model(conf.SCIENCE).objects.all()
@@ -47,7 +43,7 @@ class ClassView(ModelViewSet):
         if type(self.request.user)==AnonymousUser:
             return "AnonymousUser"
         return self.request.user
-    
+
     def get_teacher(self):
         from django.contrib.auth.models import AnonymousUser
         if type(self.request.user)!=AnonymousUser:
@@ -77,7 +73,7 @@ class ClassView(ModelViewSet):
             class_data["students"]=stdserializer.data
             data.append(class_data)
         return Response(data)
-    
+
     @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_students_of_class(self, request):
         from accounts.serializers import StudentSerializer
@@ -85,7 +81,7 @@ class ClassView(ModelViewSet):
         students=get_model(conf.STUDENT).objects.filter(class_of_school=instance)
         serializer=StudentSerializer(students,many=True)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_students_of_class_pk(self, request, pk=None):
         from accounts.serializers import StudentSerializer
@@ -93,7 +89,7 @@ class ClassView(ModelViewSet):
         students=get_model(conf.STUDENT).objects.filter(class_of_school=instance)
         serializer=StudentSerializer(students,many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
     def get_lessons_of_class(self, request, pk=None):
         from .serializers import Lesson_Serializer
@@ -101,7 +97,7 @@ class ClassView(ModelViewSet):
         lessons=get_model(conf.LESSON).objects.filter(student_class=instance)
         serializer=Lesson_Serializer(lessons,many=True)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_lessons_of_class_pk(self, request, pk=None):
         from .serializers import Lesson_Serializer
@@ -109,8 +105,8 @@ class ClassView(ModelViewSet):
         lessons=get_model(conf.LESSON).objects.filter(student_class=instance)
         serializer=Lesson_Serializer(lessons,many=True)
         return Response(serializer.data)
-    
-    @action(detail=False, methods=['GET'],permission_classes=[permissions.TeacherPermission])
+
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_attendances_of_class(self, request, pk=None):
         from .serializers import AttendanceSerializer
         instance = self.get_teacher().sinf
@@ -129,10 +125,9 @@ class ClassView(ModelViewSet):
             student_dict['attendances']=attendances_serializer.data
             attendances_arr.append(student_dict)
         return Response(attendances_arr)#TODO
-    
+
     @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_attendances_of_class_pk(self, request, pk=None):
-        from accounts.serializers import StudentSerializer
         from .serializers import AttendanceSerializer
         instance = self.get_object()
         students=get_model(conf.STUDENT).objects.filter(class_of_school=instance)
@@ -140,11 +135,8 @@ class ClassView(ModelViewSet):
         for student in students:
             attendances=get_model(conf.ATTENDANCE).objects.filter(user=student.user)
             attendances_serializer=AttendanceSerializer(attendances,many=True)
-            std_ser=StudentSerializer(student,many=False)
-            print(std_ser.data)
-            attendances_arr.append()
-        serializer=StudentSerializer(students,many=True)
-        return Response(serializer.data)
+            attendances_arr+=attendances_serializer.data
+        return Response(attendances_arr)
 
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
@@ -223,12 +215,11 @@ class LessonView(ModelViewSet):
             if fs.exists(filename):
                 fs.delete(filename)
         return Response({"message": "success"}, status=status.HTTP_200_OK)
-    
+
     @action(detail=False, methods=['GET'])
     def get_lessons_of_class(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         data=[]
-        days=("Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba")
         from .serializers import Lesson_Serializer
         classes = get_model(conf.CLASS).objects.all()
         for instance in classes:
@@ -257,7 +248,7 @@ class TaskForClassView(ModelViewSet):
     serializer_class=serializers.TaskForClassSerializer
     permission_classes=[permissions.TeacherPermission]
     filterset_fields="__all__"
-    
+
 class Parent_CommentView(ModelViewSet):
     queryset=get_model(conf.PARENT_COMMENT).objects.all()
     serializer_class=serializers.Parent_CommentSerializer
@@ -298,7 +289,7 @@ class Parent_CommentView(ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         else:
             return Response({"error":"auth"})
-    
+
     @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission])
     def get_with_parent(self, request):
         parents=get_model(conf.PARENT).objects.all()
@@ -343,4 +334,4 @@ class QuestionsView(ModelViewSet):
 class CompanyView(ModelViewSet):
     queryset=get_model(conf.COMPANY).objects.all()
     serializer_class=serializers.CompanySerializer
-    # permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]

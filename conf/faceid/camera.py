@@ -27,14 +27,18 @@ def cam_entrance(request,users):
                     )[0]
                     attendance.attendance_type=get_model(conf.ATTENDANCE).KELGAN
                     attendance.date_enter=timezone.now()
+                    if user.type_user=="student":
+                        student=user.student
+                        parents=student.parents.all()
+                        if len(parents)>=1:
+                            parent=parents[0]
+                            get_model(conf.MESSAGE).objects.create(parent=parent,child=student,type_message="KIRISH")
                     attendance.save()
-
-                    # TODO SMS PARENT
                     response=1
-            # cam1.stop()
+            cam1.stop()
             return {"message":response}
         except AttributeError:
-            # cam1.stop()
+            cam1.stop()
             return {"message":0}
     return {"message":0}
 
@@ -56,13 +60,18 @@ def cam_exit(request,users):
                         date=datetime.now().date()
                     )[0]
                     attendance.date_leave=timezone.now()
+                    if user.type_user=="student":
+                        student=user.student
+                        parents=student.parents.all()
+                        if len(parents)>=1:
+                            parent=parents[0]
+                            get_model(conf.MESSAGE).objects.create(parent=parent,child=student,type_message="CHIQISH")
                     attendance.save()
-                    # TODO SMS PARENT
                     response=1
-            # cam1.stop()
+            cam1.stop()
             return {"message":response}
         except AttributeError:
-            # cam1.stop()
+            cam1.stop()
             return {"message":0}
     return {"message":0}
 
@@ -83,7 +92,6 @@ def cam(request,pk):
         response_data = cam_entrance(request, users=users_list)
     elif pk == 2 and users_list:
         response_data = cam_exit(request, users=users_list)
-
     return JsonResponse(response_data,safe=True)
 
 

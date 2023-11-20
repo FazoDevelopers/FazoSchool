@@ -45,6 +45,7 @@ PARENT_COMMENT="school.Parent_Comment"#Ota ona comment modeli
 TEACHER_LESSON="school.Teacher_Lesson"#Davomat modeli
 QUESTION="school.Question"#Davomat modeli
 COMPANY="school.Company"#Davomat modeli
+MESSAGE="school.Message"#Davomat modeli
 
 def all_days():
     import datetime

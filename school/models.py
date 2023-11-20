@@ -210,3 +210,17 @@ class Company(models.Model):
     hostel_price=models.IntegerField(default=0)
     camera_entrance=models.CharField(max_length=500,blank=True,null=True)
     camera_exit=models.CharField(max_length=500,blank=True,null=True)
+    # TODO work time camera
+    
+class Message(models.Model):
+    TYPE_MESSAGE=(
+        ("KIRISH","KIRISH"),
+        ("CHIQISH","CHIQISH"),
+        ("OYLIK_TULOV","OYLIK_TULOV"),
+    )
+    parent=models.ForeignKey(get_model(conf.PARENT),related_name="messages",on_delete=models.CASCADE)
+    child=models.ForeignKey(get_model(conf.STUDENT),related_name="messages",on_delete=models.CASCADE)
+    type_message=models.CharField(max_length=255,choices=TYPE_MESSAGE)
+    created_date=models.DateTimeField(auto_now_add=True)
+    sended_date=models.DateTimeField(auto_now=True)
+
