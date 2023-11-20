@@ -120,7 +120,7 @@ class UserView(ModelViewSet):
             match user.type_user:
                 case 'admin':
                     user=user.admin
-                    self.serializer_class=serializers.AdminSerializer
+                    self.serializer_class=serializers.MeAdminSerializer
                 case 'teacher':
                     user=user.teacher
                     self.serializer_class=serializers.TeacherSerializer

@@ -69,6 +69,42 @@ class Permission_Serializer(serializers.ModelSerializer):
         model=get_model(conf.PERMISSION)
         fields="__all__"
 
+class MeAdminSerializer(serializers.Serializer):
+    user=UserSerializer()
+    type_dict=serializers.SerializerMethodField('get_type_dict')
+    permissions_dict=serializers.SerializerMethodField('get_permissions_dict')
+    paths=serializers.SerializerMethodField('get_paths_dict')
+
+    class Meta:
+        model=get_model(conf.ADMIN)
+        fields="__all__"
+    
+    def get_type_dict(self, obj):
+        request = self.context.get('request')
+        serializer_context = {'request': request }
+        types = obj.types
+        serializer = Type_of_Admin_Serializer(types, many=False, context=serializer_context)
+        return serializer.data
+    
+    def get_permissions_dict(self, obj):
+        request = self.context.get('request')
+        serializer_context = {'request': request }
+        types = obj.permissions.all()
+        if types:
+            serializer = Permission_Serializer(types, many=True, context=serializer_context)
+            return serializer.data
+        else:
+            return []
+
+    def get_paths_dict(self, obj):
+        permissions = obj.permissions.all()
+        paths=[]
+        if permissions:
+            for permission in permissions:
+                paths.append(permission.path)
+        else:
+            return paths
+
 class AdminSerializer(serializers.ModelSerializer):
     user=UserSerializer()
     type_dict=serializers.SerializerMethodField('get_type_dict')
