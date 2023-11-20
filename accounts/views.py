@@ -383,7 +383,7 @@ class Student_View(ModelViewSet):
             return "ItIsNotStudent"
         return "AnonymousUser"
 
-    @action(detail=False, methods=['GET'],permission_classes=[permissions.ParentPermission])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.ParentPermission])
     def get_students_for_parent(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         students=[]
