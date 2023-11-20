@@ -88,8 +88,7 @@ def student_debts(request):
 @authentication_classes([SessionAuthentication])  # Use SessionAuthentication for authentication
 @permission_classes([IsAuthenticated])  # Require users to be authenticated
 def set_assets(request):
-    json_path=os.path.join(settings.STATICFILES_DIRS_CUSTOM,'data.json')
-
+    json_path=os.path.join(settings.STATICFILES_DIRS[0],'data.json')
     with open(json_path, 'r') as file:
         # Load the JSON data from the file
         json_data = json.load(file)
