@@ -98,6 +98,7 @@ class MeAdminSerializer(serializers.Serializer):
         if permissions:
             for permission in permissions:
                 paths.append(permission.path)
+            return paths
         else:
             return paths
 
