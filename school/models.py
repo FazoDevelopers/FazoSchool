@@ -221,6 +221,17 @@ class Message(models.Model):
     parent=models.ForeignKey(get_model(conf.PARENT),related_name="messages",on_delete=models.CASCADE)
     child=models.ForeignKey(get_model(conf.STUDENT),related_name="messages",on_delete=models.CASCADE)
     type_message=models.CharField(max_length=255,choices=TYPE_MESSAGE)
+    debt=models.ForeignKey(get_model(conf.STUDENT_DEBT),related_name="messages",on_delete=models.CASCADE,blank=True,null=True)
     created_date=models.DateTimeField(auto_now_add=True)
     sended_date=models.DateTimeField(auto_now=True)
+    
+    @property
+    def content(self):
+        from conf.utils.sms import get_kirish_content,get_chiqish_content,get_debt_content
+        if self.type_message=="KIRISH":
+            return get_kirish_content(self)
+        elif self.type_message=="CHIQISH":
+            return get_chiqish_content(self)
+        elif self.type_message=="OYLIK_TULOV":
+            return get_debt_content(self)
 

@@ -33,7 +33,7 @@ class ScienceView(ModelViewSet):
         serializer=TeacherSerializer(teachers,many=True)
         return Response(serializer.data)
 
-class ClassView(ModelViewSet):
+class ClassView(ModelViewSet):#get information class
     queryset=get_model(conf.CLASS).objects.all()
     serializer_class=serializers.ClassSerializer
     permission_classes=[permissions.TasischiOrManagerOrAdminPermission]

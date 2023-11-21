@@ -10,6 +10,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 import os,json
+from utils.sms import create_debts_sms
 
 def check_discount(study_price,student,price):
     if student.discount_type:
@@ -81,7 +82,10 @@ def student_debts(request):
             paid=False,
         )
         print(debts)
-        # TODO Qarzdorlik sms
+        parents=student.parents.all()
+        if len(parents)>=1:
+            parent=parents[0]
+            create_debts_sms(parent=parent,child=student,type_message="OYLIK_TULOV",debts=debts)
     return Response({"message": "succesfully"})
 
 @api_view(['GET'])

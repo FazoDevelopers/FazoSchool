@@ -7,6 +7,7 @@ from myconf.conf import get_model
 from myconf import conf
 from datetime import datetime
 from django.utils import timezone
+from utils.sms import create_sms
 
 def cam_entrance(request,users):
     camera=get_model(conf.COMPANY).objects.all()
@@ -32,7 +33,7 @@ def cam_entrance(request,users):
                         parents=student.parents.all()
                         if len(parents)>=1:
                             parent=parents[0]
-                            get_model(conf.MESSAGE).objects.create(parent=parent,child=student,type_message="KIRISH")
+                            create_sms(parent=parent,child=student,type_message="KIRISH")
                     attendance.save()
                     response=1
             cam1.stop()
@@ -65,7 +66,7 @@ def cam_exit(request,users):
                         parents=student.parents.all()
                         if len(parents)>=1:
                             parent=parents[0]
-                            get_model(conf.MESSAGE).objects.create(parent=parent,child=student,type_message="CHIQISH")
+                            create_sms(parent=parent,child=student,type_message="CHIQISH")
                     attendance.save()
                     response=1
             cam1.stop()
