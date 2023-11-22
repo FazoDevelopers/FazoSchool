@@ -10,7 +10,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 import os,json
-from utils.sms import create_debts_sms
+from .utils.sms import create_debts_sms
 
 def check_discount(study_price,student,price):
     if student.discount_type:

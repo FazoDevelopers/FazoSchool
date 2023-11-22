@@ -16,6 +16,7 @@ import datetime
 from django.db.models import Count
 from django.core.files.storage import FileSystemStorage
 from django.db import transaction
+from django.conf import settings
 # permissions
 from conf import permissions
 
@@ -36,7 +37,7 @@ class ScienceView(ModelViewSet):
 class ClassView(ModelViewSet):#get information class
     queryset=get_model(conf.CLASS).objects.all()
     serializer_class=serializers.ClassSerializer
-    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission]
     lookup_field = 'pk'
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
@@ -61,7 +62,7 @@ class ClassView(ModelViewSet):#get information class
         return "AnonymousUser"
 
     @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
-    def get_students_of_classes(self, request,):
+    def get_students_of_classes(self, request):
         from accounts.serializers import StudentSerializer
         queryset = self.filter_queryset(self.get_queryset())
         data=[]
@@ -81,6 +82,34 @@ class ClassView(ModelViewSet):#get information class
         students=get_model(conf.STUDENT).objects.filter(class_of_school=instance)
         serializer=StudentSerializer(students,many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
+    def get_informations_of_class_pk(self, request, pk=None):
+        from accounts.serializers import StudentSerializer
+        instance = self.get_object()
+        students=get_model(conf.STUDENT).objects.filter(class_of_school=instance)
+        std_serializer=StudentSerializer(students,many=True)
+        teacher=instance.teacher
+
+        teacher_image_url = None
+        if teacher:
+            if teacher.user.image:
+                teacher_image_url = request.build_absolute_uri(settings.MEDIA_URL + str(teacher.user.image))
+            teacher={
+                "username":teacher.user.username,
+                "first_name":teacher.user.first_name,
+                "last_name":teacher.user.last_name,
+                "image":teacher_image_url
+            }
+
+        data={
+            "title":instance.title,
+            "teacher":teacher,
+            "room":instance.room.title if instance.room else instance.room,
+            "students":std_serializer.data
+        }
+
+        return Response(data)
 
     @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission])
     def get_students_of_class_pk(self, request, pk=None):

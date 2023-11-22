@@ -275,7 +275,7 @@ class Teacher_View(ModelViewSet):
         from school import serializers
         instance=self.get_teacher()
         tasks=get_model(conf.TASK_FOR_CLASS).objects.filter(from_teacher=instance)
-        serializer=serializers.TaskForClassSerializer(data=tasks,context=self.get_serializer_context())
+        serializer=serializers.TaskForClassSerializer(data=tasks,many=True,context=self.get_serializer_context())
         return Response(serializer.data)
 
     @action(detail=False, methods=['POST'],permission_classes=[permissions.TeacherPermission])
@@ -383,7 +383,7 @@ class Student_View(ModelViewSet):
             return "ItIsNotStudent"
         return "AnonymousUser"
 
-    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission,permissions.ParentPermission])
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission])
     def get_students_for_parent(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         students=[]
