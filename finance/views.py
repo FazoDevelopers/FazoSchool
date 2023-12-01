@@ -38,14 +38,16 @@ class Data_Finance(APIView):
         import calendar
         from django.db.models import Sum
         from .models import InCome,Expense
-        if (len(InCome.objects.all()) and len(Expense.objects.all()))==False:
+        if (len(InCome.objects.all()) or len(Expense.objects.all()))==False:
             return Response([])
-        last_income=InCome.objects.latest('created_date')
-        first_income=InCome.objects.earliest('created_date')
-        last_expense=Expense.objects.latest('created_date')
-        first_expense=Expense.objects.earliest('created_date')
-        first_object=int(first_income.created_date.year) if int(first_income.created_date.year)<int(first_expense.created_date.year) else int(first_expense.created_date.year)
-        last_object=int(last_income.created_date.year) if int(last_income.created_date.year)>int(last_expense.created_date.year) else int(last_expense.created_date.year)
+        # TODO Income and Expense
+        last_income=InCome.objects.latest('created_date').created_date.year if len(InCome.objects.all()) else 2025
+        first_income=InCome.objects.earliest('created_date').created_date.year if len(InCome.objects.all()) else 2022
+        last_expense=Expense.objects.latest('created_date').created_date.year if len(Expense.objects.all()) else 2025
+        first_expense=Expense.objects.earliest('created_date').created_date.year if len(Expense.objects.all()) else 2022
+        
+        first_object=int(first_income) if int(first_income)<int(first_expense) else int(first_expense)
+        last_object=int(last_income) if int(last_income)>int(last_expense) else int(last_expense)
 
         current_date=datetime.now()
         years=[i for i in range(first_object,last_object+1)]
