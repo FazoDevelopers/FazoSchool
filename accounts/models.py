@@ -222,9 +222,11 @@ class StudentManager(models.Manager):
                     'discount_month': 2,
                 },
             }
-        discount=data[kwargs['discount_type']]
-        kwargs['discount']=discount['discount']
-        kwargs['discount_month']=discount['discount_month']
+        discount_type=kwargs.get("discount_type",None)
+        if discount_type:
+            discount=data[discount_type]
+            kwargs['discount']=discount['discount']
+            kwargs['discount_month']=discount['discount_month']
         return super().create(**kwargs)
 
 class Student(models.Model):
