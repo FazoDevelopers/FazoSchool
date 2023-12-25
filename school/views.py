@@ -272,6 +272,19 @@ class TaskView(ModelViewSet):
     permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     filterset_fields="__all__"
 
+    @action(detail=False,methods=['POST'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.ParentPermission])
+    def add_tasks(self,request):
+        user=self.request.user
+        data=dict(request.data)
+        if user.is_authenticated:
+            if user.type_user=="admin":
+                data['from_user']=user.id
+                serializer=self.get_serializer(data=data)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                headers = self.get_success_headers(serializer.data)
+                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 class TaskForClassView(ModelViewSet):
     queryset=get_model(conf.TASK_FOR_CLASS).objects.all()
     serializer_class=serializers.TaskForClassSerializer
