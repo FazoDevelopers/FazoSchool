@@ -206,6 +206,16 @@ class StudentSerializer(serializers.ModelSerializer):
         student = get_model(conf.STUDENT).objects.create(user=user_instance, **validated_data)
         return student
 
+class StudentLog_Serializer(serializers.ModelSerializer):
+    class Meta:
+        model=get_model(conf.STUDENT_LOG)
+        fields="__all__"
+
+class StudentDiscount_Serializer(serializers.ModelSerializer):
+    class Meta:
+        model=get_model(conf.STUDENT_DISCOUNT)
+        fields="__all__"
+
 class ParentSerializer(serializers.ModelSerializer):
     user=UserSerializer()
     children_dict=serializers.SerializerMethodField('get_children_dict')

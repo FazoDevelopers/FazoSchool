@@ -156,7 +156,15 @@ class UserView(ModelViewSet):
     @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
     def change_status(self, request,pk=None):
         status=True if request.GET.get("status") == 'true' else False
+        if status and self.get_user().admin.types.slug!="tasischi":
+            return Response({"error":"you has't permission"})
         user=self.get_object()
+        if status==False and user.type_user=='student':
+            # Bu yerda student statusi false bo'lganda log saqlaydi!!!
+            get_model(conf.STUDENT_LOG).objects.create(
+                student=user.student,
+                author=self.get_user()
+            )
         user.is_active=status
         user.save()
         return Response({"message":"success"})
@@ -365,7 +373,7 @@ class Employer_View(ModelViewSet):
         return Response({"success":"true"},status=status.HTTP_200_OK)
 
 class Student_View(ModelViewSet):
-    queryset=get_model(conf.STUDENT).objects.all()
+    queryset=get_model(conf.STUDENT).objects.filter(user__is_active=True)
     serializer_class=serializers.StudentSerializer
     permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
@@ -392,6 +400,103 @@ class Student_View(ModelViewSet):
                 serializer = self.get_serializer(student, many=False)
                 students.append(serializer.data)
         return Response(students)
+    
+    # student statistika begin
+
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_all_statistics(self, request):
+        from django.utils import timezone
+
+        queryset = self.filter_queryset(self.get_queryset())
+        current_date = timezone.now()
+        data={}
+
+        # added_students
+        added_students=queryset.filter(user__date_joined__month=current_date.month,user__is_active=True)
+        data["added_students"]={
+            "added_students_count":added_students.count(),
+            "added_students":self.get_serializer(added_students,many=True).data
+        }
+
+        # deleted_students
+        deleted_students=queryset.filter(deleted_student__created_date__month=current_date.month)
+        data["deleted_students"]={
+            "deleted_students_count":deleted_students.count(),
+            "deleted_students":self.get_serializer(deleted_students,many=True).data
+        }
+
+        # indebted_students
+        indebted_students=queryset.filter(debts__paid=False)
+        data["indebted_students"]={
+            "indebted_students_count":indebted_students.count(),
+            "indebted_students":self.get_serializer(indebted_students,many=True).data
+        }
+
+        discount_students=queryset.filter(discounts__created_date__year=current_date.year,discounts__created_date__month=current_date.month,discounts__is_active=True)
+ 
+        data["discount_students"]={
+            "discount_students_count":discount_students.count(),
+            "discount_students":self.get_serializer(discount_students,many=True).data
+        }
+
+        return Response(data)
+
+    # Bu oy nechta o'quvchi qo'shilgani
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_added_students(self, request):
+        from django.utils import timezone
+        queryset = self.filter_queryset(self.get_queryset())
+        current_date = timezone.now()
+        added_students=queryset.filter(user__date_joined__month=current_date.month,user__is_active=True)
+
+        return Response({
+            "added_students_count":added_students.count(),
+            "added_students":self.get_serializer(added_students,many=True).data
+        })
+    
+    # Bu oy nechta o'quvchi o'chirilgani
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_deleted_students(self, request):
+        from django.utils import timezone
+        queryset = self.filter_queryset(self.get_queryset())
+        current_date = timezone.now()
+        deleted_students=queryset.filter(deleted_student__created_date__month=current_date.month)
+        return Response({
+            "deleted_students_count":deleted_students.count(),
+            "deleted_students":self.get_serializer(deleted_students,many=True).data
+        })
+    
+    # Bu nechta o'quvchi qarzdorligi 
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_indebted_students(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # for instance in queryset:
+        #     debts=get_model(conf.STUDENT_DEBT).objects.filter(
+        #         student=instance,
+        #         paid=False,
+        #     )
+        indebted_students=queryset.filter(debts__paid=False)
+
+        return Response({
+            "indebted_students_count":indebted_students.count(),
+            "indebted_students":self.get_serializer(indebted_students,many=True).data
+        })
+
+    # Bu nechta o'quvchi qarzdorligi 
+    @action(detail=False, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_discount_students(self, request):
+        from django.utils import timezone
+        queryset = self.filter_queryset(self.get_queryset())
+        current_date = timezone.now()
+        discount_students=queryset.filter(discounts__created_date__year=current_date.year,discounts__created_date__month=current_date.month,discounts__is_active=True)
+ 
+        return Response({
+            "discount_students_count":discount_students.count(),
+            "discount_students":self.get_serializer(discount_students,many=True).data
+        })
+
+    # student statistika end
 
     @action(detail=False, methods=['POST'])
     def add_student_with_excel(self, request):
@@ -459,6 +564,8 @@ class Student_View(ModelViewSet):
         context=self.get_serializer_context()
         serializer=schoolser.TaskForClassSerializer(tasks,many=True,context=context)
         return Response(serializer.data)
+    
+    
 
     @action(detail=False, methods=['GET'],permission_classes=[permissions.StudentPermission])
     def get_lessons_of_student(self, request, pk=None):
@@ -476,6 +583,16 @@ class Student_View(ModelViewSet):
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({"success":"true"},status=status.HTTP_200_OK)
+
+class StudentLog_View(ModelViewSet):
+    queryset=get_model(conf.STUDENT_LOG).objects.all()
+    serializer_class=serializers.StudentLog_Serializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
+
+class StudentDiscount_View(ModelViewSet):
+    queryset=get_model(conf.STUDENT_DISCOUNT).objects.all()
+    serializer_class=serializers.StudentDiscount_Serializer
+    permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
 
 class Parent_View(ModelViewSet):
     queryset=get_model(conf.PARENT).objects.all()
@@ -597,9 +714,9 @@ class General_Statistics(APIView):
     permission_classes=[permissions.TasischiOrManagerOrAdminPermission]
     def get(self,request,*args,**kwargs):
         data={
-            "admins":len(get_model(conf.ADMIN).objects.all()),
-            "teachers":len(get_model(conf.TEACHER).objects.all()),
-            "employers":len(get_model(conf.EMPLOYER).objects.all()),
-            "students":len(get_model(conf.STUDENT).objects.all()),
+            "admins":len(get_model(conf.ADMIN).objects.filter(user_is_active=True)),
+            "teachers":len(get_model(conf.TEACHER).objects.filter(user_is_active=True)),
+            "employers":len(get_model(conf.EMPLOYER).objects.filter(user_is_active=True)),
+            "students":len(get_model(conf.STUDENT).objects.filter(user_is_active=True)),
         }
         return Response([data],status=200)

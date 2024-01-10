@@ -39,6 +39,12 @@ class ClassView(ModelViewSet):#get information class
     serializer_class=serializers.ClassSerializer
     permission_classes=[permissions.TasischiOrManagerOrAdminPermission|permissions.TeacherPermission]
     lookup_field = 'pk'
+
+    def get_students(self):
+        instance = self.get_object()
+        students=get_model(conf.STUDENT).objects.filter(class_of_school=instance)
+        return students
+
     def get_user(self):
         from django.contrib.auth.models import AnonymousUser
         if type(self.request.user)==AnonymousUser:
@@ -166,6 +172,118 @@ class ClassView(ModelViewSet):#get information class
             attendances_serializer=AttendanceSerializer(attendances,many=True)
             attendances_arr+=attendances_serializer.data
         return Response(attendances_arr)
+
+    def get_my_queryset(self):
+        queryset = super().get_queryset()
+        # print(self.get_object())
+        students_queryset=["get_all_statistics","get_added_students","get_deleted_students","get_indebted_students","get_discount_students"]
+        if self.action in students_queryset:
+            queryset = self.get_students()
+        return queryset
+    
+    def get_serializer_class(self):
+        students_queryset=["get_all_statistics","get_added_students","get_deleted_students","get_indebted_students","get_discount_students"]
+        if self.action in students_queryset:
+            from accounts.serializers import StudentSerializer
+            return StudentSerializer
+        return self.serializer_class
+    
+    # student statistika begin
+
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_all_statistics(self, request,*args,**kwargs):
+        from django.utils import timezone
+
+        queryset = self.filter_queryset(self.get_my_queryset())
+        current_date = timezone.now()
+        data={}
+
+        # added_students
+        added_students=queryset.filter(user__date_joined__month=current_date.month,user__is_active=True)
+        data["added_students"]={
+            "added_students_count":added_students.count(),
+            "added_students":self.get_serializer(added_students,many=True).data
+        }
+
+        # deleted_students
+        deleted_students=queryset.filter(deleted_student__created_date__month=current_date.month)
+        data["deleted_students"]={
+            "deleted_students_count":deleted_students.count(),
+            "deleted_students":self.get_serializer(deleted_students,many=True).data
+        }
+
+        # indebted_students
+        indebted_students=queryset.filter(debts__paid=False)
+        data["indebted_students"]={
+            "indebted_students_count":indebted_students.count(),
+            "indebted_students":self.get_serializer(indebted_students,many=True).data
+        }
+
+        discount_students=queryset.filter(discounts__created_date__year=current_date.year,discounts__created_date__month=current_date.month,discounts__is_active=True)
+ 
+        data["discount_students"]={
+            "discount_students_count":discount_students.count(),
+            "discount_students":self.get_serializer(discount_students,many=True).data
+        }
+
+        return Response(data)
+
+    # Bu oy nechta o'quvchi qo'shilgani
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_added_students(self, request,*args,**kwargs):
+        from django.utils import timezone
+        queryset = self.filter_queryset(self.get_my_queryset())
+        current_date = timezone.now()
+        added_students=queryset.filter(user__date_joined__month=current_date.month,user__is_active=True)
+
+        return Response({
+            "added_students_count":added_students.count(),
+            "added_students":self.get_serializer(added_students,many=True).data
+        })
+    
+    # Bu oy nechta o'quvchi o'chirilgani
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_deleted_students(self, request,*args,**kwargs):
+        from django.utils import timezone
+        queryset = self.filter_queryset(self.get_my_queryset())
+        current_date = timezone.now()
+        deleted_students=queryset.filter(deleted_student__created_date__month=current_date.month)
+        return Response({
+            "deleted_students_count":deleted_students.count(),
+            "deleted_students":self.get_serializer(deleted_students,many=True).data
+        })
+    
+    # Bu nechta o'quvchi qarzdorligi 
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_indebted_students(self, request,*args,**kwargs):
+        queryset = self.filter_queryset(self.get_my_queryset())
+
+        # for instance in queryset:
+        #     debts=get_model(conf.STUDENT_DEBT).objects.filter(
+        #         student=instance,
+        #         paid=False,
+        #     )
+        indebted_students=queryset.filter(debts__paid=False)
+
+        return Response({
+            "indebted_students_count":indebted_students.count(),
+            "indebted_students":self.get_serializer(indebted_students,many=True).data
+        })
+
+    # Bu nechta o'quvchi qarzdorligi 
+    @action(detail=True, methods=['GET'],permission_classes=[permissions.TasischiOrManagerOrAdminPermission])
+    def get_discount_students(self, request,*args,**kwargs):
+        from django.utils import timezone
+        queryset = self.filter_queryset(self.get_my_queryset())
+        current_date = timezone.now()
+        discount_students=queryset.filter(discounts__created_date__year=current_date.year,discounts__created_date__month=current_date.month,discounts__is_active=True)
+ 
+        return Response({
+            "discount_students_count":discount_students.count(),
+            "discount_students":self.get_serializer(discount_students,many=True).data
+        })
+
+    # student statistika end
 
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta

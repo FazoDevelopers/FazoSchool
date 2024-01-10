@@ -19,6 +19,7 @@ class ClassSerializer(serializers.ModelSerializer):
         from accounts.serializers import TeacherSerializer
         request = self.context.get('request')
         serializer_context = {'request': request }
+        
         teacher = obj.teacher
         if teacher:
             serializer = TeacherSerializer(teacher, many=False, context=serializer_context)

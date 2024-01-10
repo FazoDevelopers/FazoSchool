@@ -29,6 +29,9 @@ class Class(models.Model):
     
     def __str__(self):
         return f"class:{self.title}"
+    
+    def get_students(self):
+        return self.students.all()
 
     def save(self, *args, **kwargs):
         self.slug=slugify(self.title)

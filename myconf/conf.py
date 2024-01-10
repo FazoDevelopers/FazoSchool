@@ -28,8 +28,10 @@ PERMISSION="accounts.Permission"#Teacher modeli
 ADMIN="accounts.ADMIN"#Teacher modeli
 TEACHER="accounts.Teacher"#Teacher modeli
 EMPLOYER="accounts.Employer"#Xodim modeli
-STUDENT="accounts.Student"#Xodim modeli
-PARENT="accounts.Parent"#Xodim modeli
+STUDENT="accounts.Student"#Student modeli
+STUDENT_LOG="accounts.StudentLog"#StudentLog modeli
+STUDENT_DISCOUNT="accounts.StudentDiscount"#StudentDiscount modeli
+PARENT="accounts.Parent"#Ota Ona modeli
 
 # school app models
 SCIENCE="school.Science"#Fanlar modeli
@@ -42,10 +44,10 @@ GRADE="school.Grade"#Davomat modeli
 TASK="school.Task"#Task modeli
 TASK_FOR_CLASS="school.TaskForClass"#Davomat modeli
 PARENT_COMMENT="school.Parent_Comment"#Ota ona comment modeli
-TEACHER_LESSON="school.Teacher_Lesson"#Davomat modeli
-QUESTION="school.Question"#Davomat modeli
-COMPANY="school.Company"#Davomat modeli
-MESSAGE="school.Message"#Davomat modeli
+TEACHER_LESSON="school.Teacher_Lesson"#O'qituvchi mavzulari modeli
+QUESTION="school.Question"#test modeli
+COMPANY="school.Company"#Kompaniya modeli
+MESSAGE="school.Message"#xabarlar modeli
 
 def all_days():
     import datetime

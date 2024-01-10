@@ -7,7 +7,7 @@ from .validation import EmployerTypeError
 
 # This class is cron debt for student
 class Student_Debt(models.Model):
-    student=models.ForeignKey(conf.STUDENT,related_name="debts",on_delete=models.CASCADE)
+    student=models.ForeignKey(conf.STUDENT,related_name="debts",on_delete=models.PROTECT)
     price=models.IntegerField(default=0)
     balance=models.IntegerField(default=0)
     paid=models.BooleanField(default=False)
@@ -26,7 +26,7 @@ class InCome(models.Model):
         (EACH_PAY,"each_pay"),
         (OTHER,"other")
     )
-    student=models.ForeignKey(conf.STUDENT,related_name="each_pays",on_delete=models.CASCADE,blank=True,null=True)
+    student=models.ForeignKey(conf.STUDENT,related_name="each_pays",on_delete=models.PROTECT,blank=True,null=True)
     amount=models.IntegerField(default=0)
     comment=models.TextField(blank=True,null=True)
     # this type var is extra
@@ -43,7 +43,7 @@ class Expense(models.Model):
         (SALARY,"salary"),
         (OTHER,"other")
     )
-    user=models.ForeignKey(get_user_model(),related_name="salaries",on_delete=models.CASCADE,blank=True,null=True)
+    user=models.ForeignKey(get_user_model(),related_name="salaries",on_delete=models.PROTECT,blank=True,null=True)
     amount=models.IntegerField(default=0)
     comment=models.TextField(blank=True,null=True)
     # this type var is extra

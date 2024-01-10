@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+from email.policy import default
 import random
 from typing import Any
 from django.db import models
@@ -202,33 +204,6 @@ class Employer(models.Model):
     class Meta:
         verbose_name_plural="Xodimlar"
 
-class StudentManager(models.Manager):
-    def create(self, **kwargs: Any) -> Any:
-        data={
-                "FAMILY_CHILDREN":{
-                    'discount': 10,
-                    'discount_month': 12,
-                },
-                "EMPLOYER_CHILDREN":{
-                    'discount': 20,
-                    'discount_month': 12,
-                },
-                "GRANT_FULL":{
-                    'discount': 100,
-                    'discount_month': 12,
-                },
-                "GRANT_MONTH":{
-                    'discount': 100,
-                    'discount_month': 2,
-                },
-            }
-        discount_type=kwargs.get("discount_type",None)
-        if discount_type:
-            discount=data[discount_type]
-            kwargs['discount']=discount['discount']
-            kwargs['discount_month']=discount['discount_month']
-        return super().create(**kwargs)
-
 class Student(models.Model):
     def student_id_card_parents_path(instance, filename):
         current_date = datetime.datetime.now()
@@ -250,27 +225,26 @@ class Student(models.Model):
         formatted_date = current_date.strftime("%Y_%m_%d")
         return f"uploads/teachers/{instance.user.username}/medical_book/{formatted_date}/{filename}"
 
-    DISCOUNT_TYPE=(
-        ("GRANT_FULL","GRANT_FULL"),
-        ("GRANT_MONTH","GRANT_MONTH"),
-        ("EMPLOYER_CHILDREN","EMPLOYER_CHILDREN"),
-        ("FAMILY_CHILDREN","FAMILY_CHILDREN"),
-    )
-
     user = models.OneToOneField(get_user_model(), related_name='student', on_delete=models.CASCADE)
     id_card = models.CharField(max_length=50)
     date_of_admission = models.DateField(blank=True, null=True)
-    class_of_school = models.ForeignKey(conf.CLASS, related_name='students', on_delete=models.CASCADE, blank=True, null=True)
+    class_of_school = models.ForeignKey(conf.CLASS, related_name='students', on_delete=models.PROTECT, blank=True, null=True)
     id_card_parents = models.FileField(upload_to=student_id_card_parents_path, null=True, blank=True,verbose_name="Ota-ona pasporti nusxasi:")
     picture_3x4 = models.FileField(upload_to=student_picture_3x4_path, null=True, blank=True,verbose_name="3x4 rasm:")
     school_tab = models.FileField(upload_to=student_school_tab_path, null=True, blank=True,verbose_name="Maktabdan Tabel asli 2-11-sinflar uchun:")
     medical_book = models.FileField(upload_to=student_medical_book_path, blank=True, null=True,verbose_name="Tibbiy Daftarcha (086):")
     hostel=models.BooleanField(default=False)
-    discount=models.IntegerField(default=0)
-    discount_month=models.IntegerField(default=0)
-    discount_type=models.CharField(max_length=20,choices=DISCOUNT_TYPE,blank=True,null=True)
-    objects=StudentManager()
-    
+
+    @property
+    def discount(self):
+        discounts=StudentDiscount.objects.filter(student=self,is_active=True)
+        if len(discounts)==1:
+            return discounts[0]
+        elif len(discounts)>1:
+            raise "Multi active discounts"
+        else:
+            return None
+
     def __str__(self):
         return f"student:{self.user.username}"
     
@@ -282,6 +256,44 @@ class Student(models.Model):
 
     class Meta:
         verbose_name_plural="O'quvchilar"
+
+class StudentLog(models.Model):
+    TYPE_LOG=(
+        ("DELETED","DELETED"),
+        ("OTHER","OTHER")
+    )
+
+    student=models.ForeignKey(Student,related_name="deleted_student",on_delete=models.PROTECT)
+    comment=models.TextField(blank=True,null=True)
+    type_log=models.CharField(max_length=50,choices=TYPE_LOG,default="DELETED")
+
+    # date
+    created_date=models.DateField(auto_now_add=True)
+    updated_date=models.DateField(auto_now=True)
+    
+    # author
+    author=models.ForeignKey(UserProfile,related_name="admin_deleted_student",on_delete=models.PROTECT)
+
+class StudentDiscount(models.Model):
+    student=models.ForeignKey(Student,related_name="discounts",on_delete=models.PROTECT)
+    price=models.FloatField(default=0)
+    month=models.IntegerField(default=0)
+
+    # status
+    is_active=models.BooleanField(default=True)
+
+    # date
+    created_date=models.DateField(auto_now_add=True)
+    updated_date=models.DateField(auto_now=True)
+    
+    # author
+    author=models.ForeignKey(UserProfile,related_name="own_discounts",on_delete=models.PROTECT)
+
+    def save(self, *args,**kwargs) -> None:
+        if self.is_active:
+            quereyset=StudentDiscount.objects.filter(student=self.student,is_active=self.is_active)
+            quereyset.update(is_active=False)
+        return super().save(*args,**kwargs)
 
 class Parent(models.Model):
     user=models.OneToOneField(get_user_model(),related_name='parent',on_delete=models.CASCADE)
